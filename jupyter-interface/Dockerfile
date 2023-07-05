@@ -26,6 +26,7 @@ RUN cat /etc/skel/.bashrc >> /etc/bash.bashrc
 USER ${NB_UID}
 
 RUN mamba install --quiet --yes \
+    'matplotlib=3.7.*' \
     'websockify=0.11.*' \
     'jupyter-vscode-proxy=0.2' \
     'jupyterlab-git=0.41.*' \

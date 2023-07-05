@@ -7,26 +7,26 @@ USER ${NB_UID}
 RUN pip install --quiet --no-cache-dir \
     'divewidgets' \
     'divemathjax3' \
-    # 'divemarkdownit' \
+    'divemarkdownit' \
     # 'otter-grader' \
     'jupyterlab-deck' \
-    'jupyterlab-myst' \
+    # 'jupyterlab-myst' \
     && \
     fix-permissions "${CONDA_DIR}"
 
 
-RUN pip install --quiet --no-cache-dir \
-    nbgrader && \    
-    # git+https://github.com/dive4dec/nbgrader.git \
-    # git+https://github.com/dive4dec/ngshare_exchange.git && \
-    fix-permissions "${CONDA_DIR}"
+# RUN pip install --quiet --no-cache-dir \
+#     nbgrader && \    
+#     # git+https://github.com/dive4dec/nbgrader.git \
+#     # git+https://github.com/dive4dec/ngshare_exchange.git && \
+#     fix-permissions "${CONDA_DIR}"
 
-COPY --chown=${NB_USER}:${NB_GID} dev/nbgrader_config ${CONDA_DIR}/etc/jupyter/nbgrader_config.py
-COPY --chown=${NB_USER}:${NB_GID} jupyterlite/dep/ /tmp/dep/
+# COPY --chown=${NB_USER}:${NB_GID} dev/nbgrader_config ${CONDA_DIR}/etc/jupyter/nbgrader_config.py
+# COPY --chown=${NB_USER}:${NB_GID} jupyterlite/dep/ /tmp/dep/
 
-RUN conda env create -p ${CONDA_DIR}/envs/jlite -f /tmp/dep/environment.yml && \
-    conda clean --all -f -y && \
-    fix-permissions "${CONDA_DIR}"
+# RUN conda env create -p ${CONDA_DIR}/envs/jlite -f /tmp/dep/environment.yml && \
+#     conda clean --all -f -y && \
+#     fix-permissions "${CONDA_DIR}"
 
 # RUN pip install --quiet --no-cache-dir -r /tmp/requirements.txt \
 #     # 'bqplot' \
@@ -55,9 +55,9 @@ RUN conda env create -p ${CONDA_DIR}/envs/jlite -f /tmp/dep/environment.yml && \
 #    jupyter labextension disable --level=sys_prefix nbgrader/formgrader && \
 #    jupyter serverextension disable --sys-prefix nbgrader.server_extensions.formgrader
 
-RUN jupyter labextension disable nbgrader/formgrader && \
-    jupyter labextension disable nbgrader/create-assignment && \
-    jupyter labextension disable nbgrader/course-list
+# RUN jupyter labextension disable nbgrader/formgrader && \
+#     jupyter labextension disable nbgrader/create-assignment && \
+#     jupyter labextension disable nbgrader/course-list
 
 # RUN jupyter nbextension install --symlink --sys-prefix --py nbgrader && \
 #     jupyter nbextension enable --sys-prefix --py nbgrader && \
@@ -89,4 +89,4 @@ RUN jupyter labextension disable nbgrader/formgrader && \
 
 WORKDIR "${HOME}"
 
-CMD ["start-notebook.sh"]
+# CMD ["start-notebook.sh"]

@@ -72,6 +72,7 @@ delete:
 	@echo "Deleting chart from the Kubernetes cluster..."
 	microk8s helm delete -n $(namespace) $(release) --wait
 
+push: push.deepnb push.deepnbg push.deephub
 
 push.%: %
 	docker tag "$*" "${registry}$*:${version}"
@@ -135,6 +136,6 @@ jl-page:
 	$(activate_conda) && \
 	ghp-import -np ../_release
 
-modules := deepnb deepnbg deephub main scipy-nv nv programming jupyter-interface jl jl-clean jl-build jl-page release push.%
+modules := push deepnb deepnbg deephub main scipy-nv nv programming jupyter-interface jl jl-clean jl-build jl-page release push.%
 
 .PHONY: $(modules)
