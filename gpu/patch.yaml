@@ -1,0 +1,12 @@
+spec:
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nos.nebuly.com/gpu-partitioning
+                    operator: NotIn
+                    values:
+                      - mps

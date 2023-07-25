@@ -11,8 +11,41 @@ namespace := jhub
 release := default
 registry := localhost:32000/
 project := $(release)-$(namespace)
-python_version := 3.10
+python_version := 3.11
 base := minimal-notebook-nv
+
+port = 8888
+
+all: upgrade
+
+gpu: gpu.all
+gpu.%:
+	@cd gpu && \
+	make $*
+
+nbg:
+	@cd nb && \
+	docker build \
+		--build-arg ROOT_CONTAINER="nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04" \
+		--build-arg PYTHON_VERSION="$(python_version)" \
+		-t "$@" .
+
+image.nb.%:
+	@cd nb && \
+	docker build -t nb-$* --target $* .
+
+image.%:
+	@cd $* && \
+	docker build -t $* .
+
+test.%:
+	@docker run -it -p $(port):8888/tcp $* start-notebook.sh --NotebookApp.default_url='/lab' --NotebookApp.token=''
+
+upgrade-t: namespace
+	@echo "Upgrading chart in the Kubernetes cluster..."
+	microk8s helm upgrade -i -n $(namespace)-t $(release)-t jupyterhub/jupyterhub \
+	  --version=$(jupyterhub_chart_version) -f test.yaml --wait --create-namespace
+	helm list -n $(namespace)-t && kubectl get all -n $(namespace)-t
 
 nv:
 	docker build \
@@ -98,7 +131,7 @@ deepnb: $(base)
 	docker tag "$$stage" deepnb
 
 deepnbg: deepnb
-	cd gpu && \
+	cd bf && \
 	docker build --build-arg BASE_CONTAINER="deepnb" \
 		-t deepnbg -f "Dockerfile" .
 	# docker run --rm -it  -p 8888:8888/tcp deepnbg
@@ -138,4 +171,7 @@ jl-page:
 
 modules := push deepnb deepnbg deephub main scipy-nv nv programming jupyter-interface jl jl-clean jl-build jl-page release push.%
 
-.PHONY: $(modules)
+
+.PHONY: $(modules) nb gpu gpu.%
+
+

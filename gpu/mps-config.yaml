@@ -1,0 +1,12 @@
+version: v1
+flags:
+  migStrategy: none
+sharing:
+  mps:
+    failRequestsGreaterThanOne: true
+    resources:
+      - name: nvidia.com/gpu
+        rename: nvidia.com/gpu-5gb
+        memoryGB: 5
+        replicas: 3
+        devices: ["0"]
