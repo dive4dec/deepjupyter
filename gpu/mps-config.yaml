@@ -1,3 +1,5 @@
+# See https://docs.nebuly.com/nos/dynamic-gpu-partitioning/getting-started-mps/
+# See https://github.com/nebuly-ai/k8s-device-plugin/tree/main
 version: v1
 flags:
   migStrategy: none
@@ -6,7 +8,7 @@ sharing:
     failRequestsGreaterThanOne: true
     resources:
       - name: nvidia.com/gpu
-        rename: nvidia.com/gpu-5gb
-        memoryGB: 5
-        replicas: 3
+        rename: nvidia.com/gpu-3gb
+        memoryGB: 3
+        replicas: 5
         devices: ["0"]

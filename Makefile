@@ -2,14 +2,14 @@ SHELL:= /bin/bash
 activate_conda = source /opt/conda/bin/activate && conda activate jlite
 # registry for docker images
 # registry=localhost:32000
-registry=chungc/
+registry=chungc
 # version for tagging image for deployment
-version=latest
+version=0.1.1c
+registry := localhost:32000
 
 jupyterhub_chart_version = 3.0.0-beta.1
 namespace := jhub
 release := default
-registry := localhost:32000/
 project := $(release)-$(namespace)
 python_version := 3.11
 base := minimal-notebook-nv
@@ -23,12 +23,13 @@ gpu.%:
 	@cd gpu && \
 	make $*
 
+# --build-arg ROOT_CONTAINER="nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04"
 nbg:
 	@cd nb && \
-	docker build \
-		--build-arg ROOT_CONTAINER="nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04" \
-		--build-arg PYTHON_VERSION="$(python_version)" \
-		-t "$@" .
+	docker build -t "$@" .
+
+nb: image.nb.prod
+	docker tag nb-prod $@
 
 image.nb.%:
 	@cd nb && \
@@ -107,9 +108,9 @@ delete:
 
 push: push.deepnb push.deepnbg push.deephub
 
-push.%: %
-	docker tag "$*" "${registry}$*:${version}"
-	docker push "${registry}$*:${version}"
+push.%:
+	@docker tag $* "$(registry)/$*:$(version)" && \
+	docker push "$(registry)/$*:$(version)"
 
 # Support different interfaces such as
 # VSCode, remote desktop, retrolab, ...

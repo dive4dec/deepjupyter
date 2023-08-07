@@ -135,13 +135,15 @@ RUN set -x && \
     fix-permissions "/home/${NB_USER}"
 
 # ------------------------------------
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
 
 USER root
 
 # Install all OS dependencies for notebook server that starts but lacks all
 # features (e.g., download as all possible file formats)
 RUN \
-    # apt-get update --yes && \
+    apt-get update --yes && \
     apt-get install --yes --no-install-recommends \
     fonts-liberation \
     # - pandoc is used to convert notebooks to html files
@@ -154,6 +156,26 @@ RUN \
     # && \
     # apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Install all OS dependencies for fully functional notebook server
+RUN apt-get update --yes && \
+    apt-get install --yes --no-install-recommends \
+    # Common useful utilities
+    git \
+    nano-tiny \
+    tzdata \
+    unzip \
+    vim-tiny \
+    # git-over-ssh
+    openssh-client \
+    # nbconvert dependencies
+    # https://nbconvert.readthedocs.io/en/latest/install.html#installing-tex
+    texlive-xetex \
+    texlive-fonts-recommended \
+    texlive-plain-generic \
+    # Enable clipboard on Linux host systems
+    xclip
+    # apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Install Jupyter Notebook, Lab, and Hub
 # Generate a notebook server config
 # Cleanup temporary files
@@ -162,9 +184,11 @@ RUN \
 # files across image layers when the permissions change
 WORKDIR /tmp
 RUN mamba install --yes \
-    'notebook==7.0.*' \
+    'notebook<7.0.0' \
     'jupyterhub==4.0.*' \
-    'jupyterlab==4.0.*' && \
+    'jupyterlab==4.0.*' \
+    'nbclassic==1.0.0' \
+    && \
     jupyter notebook --generate-config && \
     # mamba clean --all -f -y && \
     # npm cache clean --force && \
@@ -175,36 +199,6 @@ RUN mamba install --yes \
 
 ENV JUPYTER_PORT=8888
 EXPOSE $JUPYTER_PORT
-
-
-# --------------------------------------
-### Desktop ###
-
-USER root
-
-# Add the Microsoft GPG key and repository for Visual Studio Code
-RUN apt-get install -y apt-transport-https gpg && \
-    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg && \
-    install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg && \
-    sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list' && \
-    rm -f packages.microsoft.gpg && \
-    apt-get update && \
-    apt-get install -y code
-
-RUN \
-    # apt-get update --yes && \
-    apt-get install --yes --no-install-recommends \
-    dbus-x11 \
-    libgl1-mesa-glx \
-    xfce4 \
-    xfce4-panel \
-    xfce4-session \
-    xfce4-settings \
-    xorg \
-    xubuntu-icon-theme \
-    firefox
-    # && \
-    # apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ENV TZ=Hongkong
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -226,7 +220,6 @@ RUN mamba install --quiet --yes \
     'python-lsp-server=1.7.*' \
     && \
     pip install --quiet --no-cache-dir \
-    'jupyter-remote-desktop-proxy==1.0.*' \
     'jupyterlab_filesystem_access==0.5.*' \
     'jupyter-www-proxy' \
     && \
@@ -249,13 +242,13 @@ USER root
 
 # Programming languages backends
 RUN \
-    # apt-get update --yes && \
+    apt-get update --yes && \
     apt-get install --yes --no-install-recommends \
     # C, C++
     build-essential \
     unzip \
     # python
-    thonny \
+    # thonny \
     # python3-dev \
     gdb \
     fpc-source \
@@ -319,14 +312,14 @@ RUN mamba install --quiet --yes \
     pip install --quiet --no-cache-dir \
     'divewidgets' \
     'jupyterlab-myst==2.0.*' \
-    'divemathjax3' \
     && \
     # mamba clean --all -f -y && \
     fix-permissions "${CONDA_DIR}"
 
 # Nbgrader
 RUN pip install --quiet --no-cache-dir \
-    'nbgrader>=v0.9.0a0' && \
+    # 'nbgrader>=v0.9.0a1' && \
+    git+https://github.com/dive4dec/nbgrader.git && \
     fix-permissions "${CONDA_DIR}"
 
 RUN pip install --quiet --no-cache-dir \
@@ -335,7 +328,6 @@ RUN pip install --quiet --no-cache-dir \
     'jupyterlab_theme_solarized_dark' \
     'theme-darcula' && \
     fix-permissions "${CONDA_DIR}"
-
 
 RUN mkdir -p ${CONDA_DIR}/srv/exchange && chmod ugo+rw $_
 
@@ -396,7 +388,40 @@ COPY start-notebook.sh start-singleuser.sh grader_setup /usr/local/bin/
 # Currently need to have both jupyter_notebook_config and jupyter_server_config to support classic and lab
 COPY jupyter_server_config.py docker_healthcheck.py /etc/jupyter/
 
+ENV TF_CPP_MIN_LOG_LEVEL=2
+
 # Switch back to jovyan to avoid accidental container runs as root
 USER ${NB_UID}
 
 WORKDIR "${HOME}"
+
+FROM prod as gpu
+
+# Install NVCC
+# # See https://www.tensorflow.org/install/pip
+# RUN mamba install --quiet --yes -c nvidia cuda-nvcc=12.2.91 && \
+#     # Configure the XLA cuda directory
+#     mkdir -p ${CONDA_DIR}/etc/conda/activate.d && \
+#     # Link libdevice file to the required path
+#     mkdir -p "${CONDA_DIR}/lib/" && \
+#     ln -s ${CONDA_DIR}/nvvm/ ${CONDA_DIR}/lib/nvvm
+
+
+# Install Tensorflow with pip
+# hadolint ignore=DL3013
+RUN pip install --no-cache-dir \
+    'nvidia-cudnn-cu11==8.6.0.163' && \
+    mamba install -c nvidia --yes \
+    'cuda-nvcc=11.3.58' && \
+    mamba install -c conda-forge --yes \
+    'cudatoolkit=11.8.0' && \
+    mamba clean --all -f -y && \
+    # Link libdevice file to the required path
+    mkdir -p "${CONDA_DIR}/lib/" && \
+    ln -s ${CONDA_DIR}/nvvm/ ${CONDA_DIR}/lib/nvvm && \
+    fix-permissions "${CONDA_DIR}" && \
+    fix-permissions "/home/${NB_USER}"
+
+ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=${CONDA_DIR}/lib
+ENV LD_LIBRARY_PATH="/opt/conda/lib/:${CONDA_DIR}/lib/python3.11/site-packages/nvidia/cudnn/lib/"
+

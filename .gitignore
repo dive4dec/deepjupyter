@@ -1,5 +1,7 @@
+.private/
 *.code-workspace
 values.yaml
+tmp/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

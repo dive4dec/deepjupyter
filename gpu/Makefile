@@ -1,3 +1,6 @@
+version=latest
+registry=localhost:32000
+
 # ---------------------
 all: enable label patch mps test
 
@@ -48,17 +51,24 @@ label:
 validate:
 	@kubectl logs -n gpu-operator-resources -lapp=nvidia-operator-validator -c nvidia-operator-validator
 
-test: add.test
-	@kubectl wait --for=condition=Ready=true -f test.yaml && \
-	kubectl logs cuda-vector-add -n gpu-operator-resources -f && \
-	make rm.test
+test: 
+	@make image.$@ && make push.$@ && make add.$@ && \
+	timeout 120s sh -c 'while ! kubectl wait --for=condition=Ready=true -f $@.yaml >/dev/null 2>&1; do sleep 2; done' && \
+	kubectl logs test -n gpu-operator-resources -f && \
+	make rm.$@
+
+image.%:
+	@docker build -t $* .
+
+push.%:
+	@docker tag $* "$(registry)/$*:$(version)" && \
+	docker push "$(registry)/$*:$(version)"
 
 add.%:
 	@kubectl apply -f $*.yaml -n gpu-operator-resources
 
 rm.%:
-	kubectl delete -f $*.yaml -n gpu-operator-resources --wait
-
+	@kubectl delete -f $*.yaml -n gpu-operator-resources --wait
 
 # Declare the phony targets
-.PHONY: enable mps validate test label add.% rm.%
+.PHONY: enable mps validate test label add.% rm.% push.%
